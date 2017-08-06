@@ -88,7 +88,7 @@ class AirCargoProblem(Problem):
                         precond_pos = [expr("At({}, {})".format(p, a)),
                                        expr("In({}, {})".format(c, p))]
                         precond_neg = []
-                        effect_add = [expr("In({}, {})".format(c, a))]
+                        effect_add = [expr("At({}, {})".format(c, a))]
                         effect_rem = [expr("In({}, {})".format(c, p))]
                         unload = Action(expr("Unload({}, {}, {})".format(c, p, a)),
                                         [precond_pos, precond_neg],
@@ -127,18 +127,23 @@ class AirCargoProblem(Problem):
             e.g. 'FTTTFF'
         :return: list of Action objects
         """
-        # TODO implement
-        possible_actions = []
+        # Get and tell Knowledge Base about current positive state
         kb = PropKB()
         kb.tell(decode_state(state, self.state_map).pos_sentence())
+
+        possible_actions = []
+
+        # Find all the possible actions
         for action in self.actions_list:
             is_possible = True
             for clause in action.precond_pos:
                 if clause not in kb.clauses:
                     is_possible = False
+                    break
             for clause in action.precond_neg:
                 if clause in kb.clauses:
                     is_possible = False
+                    break
             if is_possible:
                 possible_actions.append(action)
         return possible_actions
@@ -152,21 +157,26 @@ class AirCargoProblem(Problem):
         :param action: Action applied
         :return: resulting state after action
         """
-        # TODO implement
+
         new_state = FluentState([], [])
         old_state = decode_state(state, self.state_map)
+
+        # Add positive fluents to new_state
         for fluent in old_state.pos:
             if fluent not in action.effect_rem:
                 new_state.pos.append(fluent)
         for fluent in action.effect_add:
             if fluent not in new_state.pos:
                 new_state.pos.append(fluent)
+
+        # Add negative fluents to new_state
         for fluent in old_state.neg:
             if fluent not in action.effect_add:
                 new_state.neg.append(fluent)
         for fluent in action.effect_rem:
             if fluent not in new_state.neg:
                 new_state.neg.append(fluent)
+
         return encode_state(new_state, self.state_map)
 
     def goal_test(self, state: str) -> bool:
@@ -206,8 +216,17 @@ class AirCargoProblem(Problem):
         conditions by ignoring the preconditions required for an action to be
         executed.
         """
-        # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
+        # implemented (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
+        # Get Knowledge Base and tell it about current state
+        kb = PropKB()
+        kb.tell(decode_state(node.state, self.state_map).pos_sentence())
+
+        # Since there are no preconditions then for every required fluent that is not present in current state
+        # there is one action, always available, that'll lead to it directly
         count = 0
+        for clause in self.goal:
+            if clause not in kb.clauses:
+                count += 1
         return count
 
 
